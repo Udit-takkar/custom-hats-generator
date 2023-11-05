@@ -1,11 +1,11 @@
 "use client";
 
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Loader } from "lucide-react";
 import { FadeInStagger } from "@/components/ui/fade-in";
 
 import Image from "next/image";
@@ -19,7 +19,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -103,8 +102,17 @@ const PromptForm = () => {
               )}
             />
             <div className="flex items-center justify-end">
-              <Button size="sm" type="submit" className="gap-1.5">
-                <Sparkles className="w-4 h-4" />
+              <Button
+                disabled={generate.isLoading}
+                size="sm"
+                type="submit"
+                className="gap-1.5"
+              >
+                {generate.isLoading ? (
+                  <Loader className="w-4 h-4" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
                 Generate
               </Button>
             </div>
