@@ -2,6 +2,8 @@ import { z } from "zod";
 import { OpenAI } from "openai";
 import { TRPCError } from "@trpc/server";
 import fs from "fs";
+import getIP from "@/lib/get-ip";
+import rateLimiter from "@/lib/rateLimiter";
 
 import { publicProcedure, router } from "./trpc";
 
@@ -19,7 +21,9 @@ export const appRouter = router({
         roleDescription: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      await rateLimiter();
+
       try {
         const { roleName, roleDescription } = input;
 
@@ -42,6 +46,8 @@ export const appRouter = router({
   generateImageVariations: publicProcedure
     .input(z.object({ url: z.string().url() }))
     .mutation(async ({ input }) => {
+      await rateLimiter();
+
       try {
         const { url } = input;
         const image = fs.createReadStream(url);

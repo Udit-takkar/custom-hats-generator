@@ -19,6 +19,8 @@
     "@trpc/client": "^10.43.1",
     "@trpc/react-query": "^10.43.1",
     "@trpc/server": "^10.43.1",
+    "@upstash/ratelimit": "^0.4.4",
+    "@upstash/redis": "^1.24.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "framer-motion": "^10.16.4",
