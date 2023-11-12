@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { Redis } from "@upstash/redis";
+import redis from "@/lib/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 
 const rateLimiter = async (identifier: string = "api") => {
@@ -12,8 +12,6 @@ const rateLimiter = async (identifier: string = "api") => {
       message: `Upstash Environment variables are not present`,
     });
   }
-
-  const redis = Redis.fromEnv();
 
   const limiter = new Ratelimit({
     redis,

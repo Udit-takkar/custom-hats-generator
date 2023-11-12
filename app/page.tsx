@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Metadata } from "next";
 import { FadeIn, FadeInStagger } from "@/components/ui/fade-in";
 import PromptForm from "@/components/PromptForm";
@@ -21,12 +20,6 @@ export default function Home() {
           </h1>
         </FadeIn>
         <PromptForm />
-        {/* <FadeIn className="w-full flex self-center items-center justify-center">
-                    <ImagineForm />
-                </FadeIn>
-                <FadeIn className="w-full flex items-center mt-10">
-                    <ImagineRecord />
-                </FadeIn> */}
       </FadeInStagger>
     </div>
   );

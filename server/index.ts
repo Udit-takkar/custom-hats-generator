@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import fs from "fs";
 import getIP from "@/lib/get-ip";
 import rateLimiter from "@/lib/rateLimiter";
+import redis from "@/lib/redis";
 
 import { publicProcedure, router } from "./trpc";
 
@@ -32,9 +33,19 @@ export const appRouter = router({
           n: 1,
           size: "256x256",
         });
+        const result = response.data;
+        console.log(result);
 
-        console.log(response.data);
-        return { result: response.data, success: true };
+        // Storing Images in the Redis
+        const imageUrls: string[] = [];
+        result.forEach((image) => {
+          const { url } = image;
+          if (!!url) imageUrls.push(url);
+        });
+
+        await redis.set(roleDescription, imageUrls);
+
+        return { result: result, success: true };
       } catch (error) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -56,13 +67,30 @@ export const appRouter = router({
         const response = await openai.images.createVariation({
           image,
         });
+        const result = response.data;
+        console.log(result);
 
-        console.log(response.data);
+        return { result, success: true };
       } catch (error) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "An unexpected error occurred, please try again later.",
           cause: error,
+        });
+      }
+    }),
+  getAllImages: publicProcedure
+    .input(z.number().optional())
+    .query(async ({ input }) => {
+      const cursor = input;
+
+      try {
+      } catch (err) {
+        console.log("error getting all the images", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "An unexpected error occurred, please try again later.",
+          cause: err,
         });
       }
     }),
