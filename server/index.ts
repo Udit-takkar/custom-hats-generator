@@ -4,15 +4,36 @@ import { TRPCError } from "@trpc/server";
 import fs from "fs";
 import getIP from "@/lib/get-ip";
 import rateLimiter from "@/lib/rateLimiter";
-import redis from "@/lib/redis";
-
+import { v2 as cloudinary } from "cloudinary";
 import { publicProcedure, router } from "./trpc";
 
-const apiKey = process.env.OPENAI_API_KEY;
-
+// OpenAI Configuration
 const openai = new OpenAI({
-  apiKey,
+  apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Cloudinary Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+type ResourceType = {
+  asset_id: string;
+  public_id: string;
+  format: string;
+  version: number;
+  resource_type: string;
+  type: string;
+  created_at: string;
+  bytes: number;
+  width: number;
+  height: number;
+  folder: string;
+  url: string;
+  secure_url: string;
+};
 
 export const appRouter = router({
   generateImage: publicProcedure
@@ -27,26 +48,46 @@ export const appRouter = router({
 
       try {
         const { roleName, roleDescription } = input;
+        const prompt = roleDescription;
 
         const response = await openai.images.generate({
-          prompt: roleDescription,
+          prompt,
           n: 1,
           size: "256x256",
         });
         const result = response.data;
         console.log(result);
 
-        // Storing Images in the Redis
+        // Storing Images in the CDN
         const imageUrls: string[] = [];
-        result.forEach((image) => {
+
+        result.forEach(async (image) => {
           const { url } = image;
-          if (!!url) imageUrls.push(url);
+          if (!!url) {
+            imageUrls.push(url);
+          }
         });
 
-        await redis.set(roleDescription, imageUrls);
+        await Promise.all(
+          imageUrls.map(async (url) => {
+            cloudinary.uploader.upload(
+              url,
+              {
+                folder: "hats",
+              },
+              function (error, result) {
+                console.error(error, result);
+                if (error) {
+                  throw new Error("Error Uploading to Cloudinary");
+                }
+              }
+            );
+          })
+        );
 
-        return { result: result, success: true };
+        return { result: imageUrls, success: true };
       } catch (error) {
+        console.error("err", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "An unexpected error occurred, please try again later.",
@@ -68,7 +109,6 @@ export const appRouter = router({
           image,
         });
         const result = response.data;
-        console.log(result);
 
         return { result, success: true };
       } catch (error) {
@@ -85,6 +125,14 @@ export const appRouter = router({
       const cursor = input;
 
       try {
+        const res = await cloudinary.api.resources({
+          type: "upload",
+          prefix: "hats",
+        });
+
+        const images: Array<ResourceType> = res.resources;
+
+        return images;
       } catch (err) {
         console.log("error getting all the images", err);
         throw new TRPCError({
