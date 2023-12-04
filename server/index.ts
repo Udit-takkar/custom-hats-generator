@@ -6,6 +6,7 @@ import getIP from "@/lib/get-ip";
 import rateLimiter from "@/lib/rateLimiter";
 import { v2 as cloudinary } from "cloudinary";
 import { publicProcedure, router } from "./trpc";
+import { Readable } from "stream";
 
 // OpenAI Configuration
 const openai = new OpenAI({
@@ -34,6 +35,33 @@ type ResourceType = {
   url: string;
   secure_url: string;
 };
+
+async function getImageFromURL(url: string) {
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch the image");
+    }
+
+    const blob = await response.blob();
+
+    // Create a File-like object using the fetched image
+    const file = {
+      size: blob.size,
+      type: blob.type,
+      lastModified: Date.now(),
+      name: url.substring(url.lastIndexOf("/") + 1),
+      arrayBuffer: () => blob.arrayBuffer(),
+      text: () => blob.text(),
+      slice: (start?: number, end?: number) => blob.slice(start, end),
+    };
+
+    return file;
+  } catch (error) {
+    throw new Error("Error fetching or converting the image: " + error);
+  }
+}
 
 export const appRouter = router({
   generateImage: publicProcedure
@@ -99,19 +127,48 @@ export const appRouter = router({
     .input(z.object({ url: z.string().url() }))
     .mutation(async ({ input }) => {
       await rateLimiter();
+      console.log("input", input);
 
       try {
         const { url } = input;
-        const image = fs.createReadStream(url);
-        // image should be less than 4MB to work
+        const image = await getImageFromURL(url);
 
+        // image should be less than 4MB to work
         const response = await openai.images.createVariation({
           image,
         });
         const result = response.data;
 
-        return { result, success: true };
+        // Storing Images in the CDN
+        const imageUrls: string[] = [];
+
+        result.forEach(async (image) => {
+          const { url } = image;
+          if (!!url) {
+            imageUrls.push(url);
+          }
+        });
+
+        await Promise.all(
+          imageUrls.map(async (url) => {
+            cloudinary.uploader.upload(
+              url,
+              {
+                folder: "hats",
+              },
+              function (error, result) {
+                console.error(error, result);
+                if (error) {
+                  throw new Error("Error Uploading to Cloudinary");
+                }
+              }
+            );
+          })
+        );
+
+        return { result: imageUrls, success: true };
       } catch (error) {
+        console.log("err", error);
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "An unexpected error occurred, please try again later.",

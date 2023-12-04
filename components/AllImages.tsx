@@ -20,7 +20,7 @@ const AllImages = () => {
             return (
               <div
                 key={image?.asset_id}
-                className="rounded-md w-[256px] border border-neutral-200 bg-neutral-50 col-span-2 shadow-sm text-left overflow-hidden"
+                className="rounded-md w-[256px] border border-neutral-200 bg-neutral-50 col-span-1 shadow-sm text-left overflow-hidden"
               >
                 <div className="flex justify-center  items-center overflow-hidden">
                   {image?.url && (
